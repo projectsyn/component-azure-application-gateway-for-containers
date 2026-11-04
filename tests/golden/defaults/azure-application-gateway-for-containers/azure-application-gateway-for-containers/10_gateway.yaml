@@ -1,0 +1,21 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    alb.networking.azure.io/alb-id: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceNetworking/trafficControllers/test-alb
+  labels:
+    name: default
+  name: default
+  namespace: syn-alb
+spec:
+  addresses:
+    - type: alb.networking.azure.io/alb-frontend
+      value: default
+  gatewayClassName: azure-alb-external
+  listeners:
+    - allowedRoutes:
+        namespaces:
+          from: All
+      name: http
+      port: 80
+      protocol: HTTP

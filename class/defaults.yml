@@ -2,4 +2,20 @@ parameters:
   azure_application_gateway_for_containers:
     =_metadata:
       multi_tenant: true
-    namespace: syn-azure-application-gateway-for-containers
+    namespace: syn-alb
+
+    alb:
+      subscription_id: null
+      resource_group: null
+      name: null
+      frontend: default
+
+    gateway:
+      name: default
+      listeners:
+        http:
+          port: 80
+          protocol: HTTP
+          allowedRoutes:
+            namespaces:
+              from: All

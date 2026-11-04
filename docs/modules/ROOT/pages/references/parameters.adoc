@@ -6,14 +6,81 @@ The parent key for all of the following parameters is `azure_application_gateway
 
 [horizontal]
 type:: string
-default:: `syn-azure-application-gateway-for-containers`
+default:: `syn-alb`
 
-The namespace in which to deploy this component.
+The namespace in which to deploy the shared Gateway.
+Applications reference the Gateway from their `HTTPRoute` via `parentRefs` with this namespace.
+
+
+== `alb`
+
+The Application Gateway for Containers resource and frontend the Gateway uses.
+They're managed outside the cluster ("bring your own" deployment), for example by the `terraform-azure-aks` module (`default_alb` output).
+
+=== `alb.subscription_id`
+
+[horizontal]
+type:: string
+default:: `null`
+
+ID of the Azure subscription containing the Application Gateway for Containers resource.
+Required.
+
+=== `alb.resource_group`
+
+[horizontal]
+type:: string
+default:: `null`
+
+Resource group containing the Application Gateway for Containers resource.
+Required.
+
+=== `alb.name`
+
+[horizontal]
+type:: string
+default:: `null`
+
+Name of the Application Gateway for Containers resource.
+The `terraform-azure-aks` module names it `<aks cluster name>-alb`.
+Required.
+
+=== `alb.frontend`
+
+[horizontal]
+type:: string
+default:: `default`
+
+Name of the Application Gateway for Containers frontend the Gateway uses.
+
+
+== `gateway`
+
+=== `gateway.name`
+
+[horizontal]
+type:: string
+default:: `default`
+
+Name of the shared Gateway.
+
+=== `gateway.listeners`
+
+[horizontal]
+type:: dict
+default:: HTTP listener `http` on port 80, accepting routes from all namespaces
+
+Gateway listeners, keyed by listener name.
+The values are https://gateway-api.sigs.k8s.io/reference/spec/#listener[Gateway API listeners] without `name`.
+Set a listener to `null` to remove it.
 
 
 == Example
 
 [source,yaml]
 ----
-namespace: example-namespace
+alb:
+  subscription_id: f735ab81-34f2-4feb-a37c-a236f757c5f5
+  resource_group: vega-aks-test01-rg
+  name: vega-aks-test01-alb
 ----
