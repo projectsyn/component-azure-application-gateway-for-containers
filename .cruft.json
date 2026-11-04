@@ -1,0 +1,32 @@
+{
+  "template": "https://github.com/projectsyn/commodore-component-template.git",
+  "commit": "d0e9f8dc2b85344a283aea02369d3ec7548e388d",
+  "checkout": "main",
+  "context": {
+    "cookiecutter": {
+      "name": "Azure Application Gateway for Containers",
+      "slug": "azure-application-gateway-for-containers",
+      "parameter_key": "azure_application_gateway_for_containers",
+      "test_cases": "defaults",
+      "add_lib": "n",
+      "add_pp": "n",
+      "add_golden": "y",
+      "add_matrix": "y",
+      "add_go_unit": "n",
+      "automerge_patch": "y",
+      "automerge_patch_v0": "n",
+      "automerge_patch_regexp_blocklist": "",
+      "automerge_patch_v0_regexp_allowlist": "",
+      "automerge_minor_regexp_allowlist": "",
+      "auto_release": "y",
+      "copyright_holder": "VSHN AG <info@vshn.ch>",
+      "copyright_year": "2026",
+      "github_owner": "projectsyn",
+      "github_name": "component-azure-application-gateway-for-containers",
+      "github_url": "https://github.com/projectsyn/component-azure-application-gateway-for-containers",
+      "_template": "https://github.com/projectsyn/commodore-component-template.git",
+      "_commit": "d0e9f8dc2b85344a283aea02369d3ec7548e388d"
+    }
+  },
+  "directory": null
+}

@@ -1,0 +1,5 @@
+= Azure Application Gateway for Containers
+
+azure-application-gateway-for-containers is a Commodore component to manage Azure Application Gateway for Containers.
+
+See the xref:references/parameters.adoc[parameters] reference for further details.

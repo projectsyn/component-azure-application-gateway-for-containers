@@ -1,0 +1,5 @@
+parameters:
+  azure_application_gateway_for_containers:
+    =_metadata:
+      multi_tenant: true
+    namespace: syn-azure-application-gateway-for-containers
