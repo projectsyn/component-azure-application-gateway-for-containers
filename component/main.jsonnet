@@ -21,7 +21,7 @@ local namespace = kube.Namespace(params.namespace);
 local gateway = kube._Object('gateway.networking.k8s.io/v1', 'Gateway', params.gateway.name) {
   metadata+: {
     namespace: params.namespace,
-    annotations+: {
+    annotations+: params.gateway.annotations {
       'alb.networking.azure.io/alb-id': albId,
     },
   },

@@ -6,6 +6,11 @@ Which namespaces may do so is controlled by xref:references/parameters.adoc#_gat
 
 All listeners share the Gateway's frontend, so all domains point to the same FQDN.
 
+IMPORTANT: ListenerSets require ALB Controller 1.13 or later, which isn't yet available in the AKS add-on.
+Older versions ignore ListenerSets, their status stays `Unknown`.
+Check the version with `kubectl -n kube-system get deploy -l app=alb-controller -o jsonpath='{..image}'`.
+Until then, add listeners to the shared Gateway via xref:references/parameters.adoc#_gateway_listeners[`gateway.listeners`] instead, see <<_via_the_component_configuration>>.
+
 == Prerequisites
 
 cert-manager must be able to solve ACME HTTP-01 challenges through the shared Gateway.
@@ -152,6 +157,50 @@ spec:
             scheme: https
             statusCode: 301
 ----
+
+== Via the component configuration
+
+Without ListenerSets, add an HTTPS listener per domain to the shared Gateway in the cluster configuration.
+cert-manager issues the certificates of all HTTPS listeners in the component's namespace when the Gateway has the `cert-manager.io/cluster-issuer` annotation.
+This requires the cert-manager configuration from <<_prerequisites>>.
+
+[source,yaml]
+----
+parameters:
+  azure_application_gateway_for_containers:
+    gateway:
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+      listeners:
+        shop-example-com:
+          hostname: shop.example.com
+          port: 443
+          protocol: HTTPS
+          tls:
+            mode: Terminate
+            certificateRefs:
+              - name: shop-example-com-tls <1>
+          allowedRoutes:
+            namespaces:
+              from: All <2>
+----
+<1> The Secret cert-manager creates in the component's namespace.
+<2> Or restrict the listener to the application's namespace with `from: Selector`.
+
+Applications attach their `HTTPRoute` to the listener with `sectionName`:
+
+[source,yaml]
+----
+spec:
+  parentRefs:
+    - name: default
+      namespace: syn-alb
+      sectionName: shop-example-com
+  hostnames:
+    - shop.example.com
+----
+
+The HTTP to HTTPS redirect works the same as with ListenerSets.
 
 == Troubleshooting
 

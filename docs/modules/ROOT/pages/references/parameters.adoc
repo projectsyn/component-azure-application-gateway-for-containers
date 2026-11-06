@@ -64,6 +64,15 @@ default:: `default`
 
 Name of the shared Gateway.
 
+=== `gateway.annotations`
+
+[horizontal]
+type:: dict
+default:: `{}`
+
+Additional annotations for the Gateway, for example `cert-manager.io/cluster-issuer` to let cert-manager issue the certificates of its HTTPS listeners.
+The `alb.networking.azure.io/alb-id` annotation is always set by the component.
+
 === `gateway.allowedListeners`
 
 [horizontal]
