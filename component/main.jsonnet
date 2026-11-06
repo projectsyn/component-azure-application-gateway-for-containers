@@ -21,7 +21,7 @@ local namespace = kube.Namespace(params.namespace);
 local gateway = kube._Object('gateway.networking.k8s.io/v1', 'Gateway', params.gateway.name) {
   metadata+: {
     namespace: params.namespace,
-    annotations+: {
+    annotations+: params.gateway.annotations {
       'alb.networking.azure.io/alb-id': albId,
     },
   },
@@ -33,6 +33,8 @@ local gateway = kube._Object('gateway.networking.k8s.io/v1', 'Gateway', params.g
         value: params.alb.frontend,
       },
     ],
+    // Lets namespaces attach their own listeners (hostnames, certificates) via ListenerSets.
+    [if params.gateway.allowedListeners != null then 'allowedListeners']: params.gateway.allowedListeners,
     listeners: [
       { name: name } + params.gateway.listeners[name]
       for name in std.objectFields(params.gateway.listeners)

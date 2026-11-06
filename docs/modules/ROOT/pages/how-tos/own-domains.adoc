@@ -1,0 +1,217 @@
+= Use own domains and certificates
+
+Cluster users can serve their own domains with their own TLS certificates on the shared Gateway, without changes to the component configuration.
+They attach their listeners to the Gateway with a https://gateway-api.sigs.k8s.io/geps/gep-1713/[`ListenerSet`] in their namespace.
+Which namespaces may do so is controlled by xref:references/parameters.adoc#_gateway_allowedlisteners[`gateway.allowedListeners`].
+
+All listeners share the Gateway's frontend, so all domains point to the same FQDN.
+
+IMPORTANT: ListenerSets require ALB Controller 1.13 or later, which isn't yet available in the AKS add-on.
+Older versions ignore ListenerSets, their status stays `Unknown`.
+Check the version with `kubectl -n kube-system get deploy -l app=alb-controller -o jsonpath='{..image}'`.
+Until then, add listeners to the shared Gateway via xref:references/parameters.adoc#_gateway_listeners[`gateway.listeners`] instead, see <<_via_the_component_configuration>>.
+
+== Prerequisites
+
+cert-manager must be able to solve ACME HTTP-01 challenges through the shared Gateway.
+The default issuers of https://github.com/projectsyn/component-cert-manager[component-cert-manager] use an `nginx` Ingress instead.
+Configure cert-manager in the cluster configuration:
+
+[source,yaml]
+----
+parameters:
+  cert_manager:
+    helmValues:
+      cert_manager:
+        config:
+          apiVersion: controller.config.cert-manager.io/v1alpha1
+          kind: ControllerConfiguration
+          enableGatewayAPI: true
+    solvers:
+      alb_http01:
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - kind: Gateway
+                name: default <1>
+                namespace: syn-alb <1>
+                sectionName: http
+    cluster_issuers:
+      letsencrypt-staging:
+        ~solverRefs:
+          - alb_http01
+      letsencrypt-production:
+        ~solverRefs:
+          - alb_http01
+----
+<1> The parameters `gateway.name` and `namespace` of this component.
+
+cert-manager then creates the challenge `HTTPRoute` in the namespace of the `Certificate` and attaches it to the Gateway's `http` listener, which accepts routes from all namespaces.
+
+== Serve a domain
+
+. Point the domain to the Gateway with a CNAME record.
++
+[source,bash]
+----
+kubectl -n syn-alb get gateway default -o jsonpath='{.status.addresses[0].value}'
+----
++
+NOTE: Apex domains (`example.com`) can't have a CNAME record.
+Use a subdomain or a DNS provider that supports CNAME flattening or ALIAS records.
+
+. Request a certificate.
++
+[source,yaml]
+----
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: shop-example-com
+  namespace: shop
+spec:
+  secretName: shop-example-com-tls
+  dnsNames:
+    - shop.example.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-production
+----
+
+. Attach an HTTPS listener using the certificate to the Gateway.
++
+[source,yaml]
+----
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: shop
+  namespace: shop
+spec:
+  parentRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: default
+    namespace: syn-alb
+  listeners:
+    - name: https
+      hostname: shop.example.com
+      port: 443 <1>
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: shop-example-com-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+----
+<1> Application Gateway for Containers only supports ports 80 and 443.
++
+A listener whose hostname is already used by another listener isn't accepted, the existing listener keeps working.
+
+. Route the domain to the application.
++
+[source,yaml]
+----
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shop
+  namespace: shop
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: shop
+      sectionName: https
+  hostnames:
+    - shop.example.com
+  rules:
+    - backendRefs:
+        - name: shop
+          port: 80
+----
+
+. Optionally redirect HTTP to HTTPS.
+Attach the redirect to the Gateway's `http` listener, not to an own HTTP listener, so ACME challenges keep working.
++
+[source,yaml]
+----
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shop-redirect
+  namespace: shop
+spec:
+  parentRefs:
+    - name: default
+      namespace: syn-alb
+      sectionName: http
+  hostnames:
+    - shop.example.com
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+----
+
+== Via the component configuration
+
+Without ListenerSets, add an HTTPS listener per domain to the shared Gateway in the cluster configuration.
+cert-manager issues the certificates of all HTTPS listeners in the component's namespace when the Gateway has the `cert-manager.io/cluster-issuer` annotation.
+This requires the cert-manager configuration from <<_prerequisites>>.
+
+[source,yaml]
+----
+parameters:
+  azure_application_gateway_for_containers:
+    gateway:
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+      listeners:
+        shop-example-com:
+          hostname: shop.example.com
+          port: 443
+          protocol: HTTPS
+          tls:
+            mode: Terminate
+            certificateRefs:
+              - name: shop-example-com-tls <1>
+          allowedRoutes:
+            namespaces:
+              from: All <2>
+----
+<1> The Secret cert-manager creates in the component's namespace.
+<2> Or restrict the listener to the application's namespace with `from: Selector`.
+
+Applications attach their `HTTPRoute` to the listener with `sectionName`:
+
+[source,yaml]
+----
+spec:
+  parentRefs:
+    - name: default
+      namespace: syn-alb
+      sectionName: shop-example-com
+  hostnames:
+    - shop.example.com
+----
+
+The HTTP to HTTPS redirect works the same as with ListenerSets.
+
+== Troubleshooting
+
+Check the status of each resource, the status of the specific listener is more relevant than the top-level conditions:
+
+[source,bash]
+----
+kubectl -n shop get certificate shop-example-com <1>
+kubectl -n shop get listenerset shop -o yaml <2>
+kubectl -n shop get httproute shop -o yaml <3>
+----
+<1> `READY` must be `True`. While the challenge runs, `kubectl -n shop get challenges` shows its state.
+<2> The `https` listener must report `Accepted`, `ResolvedRefs` and `Programmed`. `ResolvedRefs=False` usually means the certificate Secret doesn't exist yet.
+<3> `Accepted` and `ResolvedRefs` must be `True` for the ListenerSet parent.

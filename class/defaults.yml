@@ -12,6 +12,10 @@ parameters:
 
     gateway:
       name: default
+      annotations: {}
+      allowedListeners:
+        namespaces:
+          from: All
       listeners:
         http:
           port: 80
