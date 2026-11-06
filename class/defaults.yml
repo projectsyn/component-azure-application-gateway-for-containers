@@ -12,6 +12,9 @@ parameters:
 
     gateway:
       name: default
+      allowedListeners:
+        namespaces:
+          from: All
       listeners:
         http:
           port: 80

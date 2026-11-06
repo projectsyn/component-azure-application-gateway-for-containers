@@ -64,6 +64,29 @@ default:: `default`
 
 Name of the shared Gateway.
 
+=== `gateway.allowedListeners`
+
+[horizontal]
+type:: dict
+default:: ListenerSets from all namespaces
+
+The Gateway's https://gateway-api.sigs.k8s.io/reference/spec/#allowedlisteners[`allowedListeners`].
+It controls which namespaces can attach their own listeners to the Gateway via `ListenerSet` resources, see xref:how-tos/own-domains.adoc[Use own domains and certificates].
+Set it to `null` to disallow ListenerSets.
+
+To only allow namespaces with a specific label:
+
+[source,yaml]
+----
+gateway:
+  allowedListeners:
+    namespaces:
+      from: Selector
+      selector:
+        matchLabels:
+          gateway-access: shared
+----
+
 === `gateway.listeners`
 
 [horizontal]

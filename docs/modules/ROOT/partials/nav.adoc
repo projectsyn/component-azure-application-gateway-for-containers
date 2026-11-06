@@ -1,2 +1,5 @@
 * xref:index.adoc[Home]
 * xref:references/parameters.adoc[Parameters]
+
+.How-tos
+* xref:how-tos/own-domains.adoc[Use own domains and certificates]

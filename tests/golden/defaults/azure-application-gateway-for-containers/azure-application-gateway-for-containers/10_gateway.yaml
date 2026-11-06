@@ -11,6 +11,9 @@ spec:
   addresses:
     - type: alb.networking.azure.io/alb-frontend
       value: default
+  allowedListeners:
+    namespaces:
+      from: All
   gatewayClassName: azure-alb-external
   listeners:
     - allowedRoutes:
