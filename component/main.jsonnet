@@ -43,8 +43,47 @@ local gateway = kube._Object('gateway.networking.k8s.io/v1', 'Gateway', params.g
   },
 };
 
+// Gateway API resources cluster users may manage in their namespaces.
+// The AKS-managed Gateway API CRDs don't ship aggregated roles, so the default `admin`, `edit` and `view` ClusterRoles don't cover them.
+local userResources = [ 'httproutes', 'grpcroutes', 'referencegrants', 'listenersets' ];
+
+local viewRole = kube._Object('rbac.authorization.k8s.io/v1', 'ClusterRole', 'syn-gateway-api-view') {
+  metadata+: {
+    labels+: {
+      'rbac.authorization.k8s.io/aggregate-to-admin': 'true',
+      'rbac.authorization.k8s.io/aggregate-to-edit': 'true',
+      'rbac.authorization.k8s.io/aggregate-to-view': 'true',
+    },
+  },
+  rules: [
+    {
+      apiGroups: [ 'gateway.networking.k8s.io' ],
+      resources: [ 'gateways' ] + userResources,
+      verbs: [ 'get', 'list', 'watch' ],
+    },
+  ],
+};
+
+// Gateways aren't included: each Gateway claims an Application Gateway for Containers frontend.
+local editRole = kube._Object('rbac.authorization.k8s.io/v1', 'ClusterRole', 'syn-gateway-api-edit') {
+  metadata+: {
+    labels+: {
+      'rbac.authorization.k8s.io/aggregate-to-admin': 'true',
+      'rbac.authorization.k8s.io/aggregate-to-edit': 'true',
+    },
+  },
+  rules: [
+    {
+      apiGroups: [ 'gateway.networking.k8s.io' ],
+      resources: userResources,
+      verbs: [ 'create', 'delete', 'deletecollection', 'patch', 'update' ],
+    },
+  ],
+};
+
 // Define outputs below
 {
   '00_namespace': namespace,
   '10_gateway': gateway,
+  '20_rbac': [ viewRole, editRole ],
 }

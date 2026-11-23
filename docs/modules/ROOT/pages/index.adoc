@@ -3,3 +3,13 @@
 azure-application-gateway-for-containers is a Commodore component to manage Azure Application Gateway for Containers.
 
 See the xref:references/parameters.adoc[parameters] reference for further details.
+
+== Permissions
+
+The component extends the default `admin`, `edit` and `view` ClusterRoles via aggregation, since the AKS-managed Gateway API CRDs don't do so:
+
+* `admin` and `edit` can manage `HTTPRoute`, `GRPCRoute`, `ReferenceGrant` and `ListenerSet` resources.
+* `admin`, `edit` and `view` can read these resources and `Gateway` resources.
+
+Users with these roles can't create Gateways, since each Gateway claims an Application Gateway for Containers frontend.
+They attach their routes to the shared Gateway instead.
